@@ -9,8 +9,7 @@
           image: "{{ vminsert_docker_image }}"
           container_name: "{{ vminsert_container_name }}"
           command: "{{ vminsert_command }}"
-          ports:
-            - "{{ vminsert_address }}:8480:8480"
+          ports: "{{ vminsert_ports }}"
           hostname: "{{ vminsert_container_name }}"
           restart: always
           labels: "{{ vminsert_docker_labels }}"
@@ -23,35 +22,35 @@
 - name: Deploy vminsert to docker swarm
   block:
     - name: Ensure pip installation
-      package:
+      ansible.builtin.package:
         name: "python3-pip"
         state: present
 
     - name: Install newer version of pip itself
-      pip:
+      ansible.builtin.pip:
         name: "pip"
         state: latest
         executable: pip3
       when:
-        - ansible_distribution == "ubuntu"
-        - ansible_distribution_major_version != 24
+        - ansible_facts['distribution'] | lower == "ubuntu"
+        - ansible_facts['distribution_major_version'] | int != 24
 
     - name: Install jsondiff from pip
-      pip:
+      ansible.builtin.pip:
         name: "jsondiff"
         state: present
         executable: pip3
       when:
-        - ansible_distribution == "ubuntu"
-        - ansible_distribution_major_version != 24
+        - ansible_facts['distribution'] | lower == "ubuntu"
+        - ansible_facts['distribution_major_version'] | int != 24
 
     - name: Ensure jsondiff
-      package:
+      ansible.builtin.package:
         name: "python3-jsondiff"
         state: present
       when:
-        - ansible_distribution == "ubuntu"
-        - ansible_distribution_major_version == 24
+        - ansible_facts['distribution'] | lower == "ubuntu"
+        - ansible_facts['distribution_major_version'] | int == 24
 
     - name: Deploy docker vminsert container in swarm
       community.docker.docker_stack:
@@ -59,13 +58,13 @@
         name: "{{ vminsert_stack_name }}"
         with_registry_auth: yes
         compose:
-          - version: '3.5'
-            services:
+          - services:
               vminsert:
                 image: "{{ vminsert_docker_image }}"
                 command: "{{ vminsert_command }}"
                 hostname: "{{ vminsert_container_name }}"
                 labels: "{{ vminsert_docker_labels }}"
+                ports: "{{ vminsert_ports }}"
                 deploy: "{{ vminsert_swarm_deploy }}"
                 ulimits:
                   nofile:
@@ -76,7 +75,7 @@
                 external:
                   name: "{{ vminsert_docker_network_name }}"
       run_once: True
-  delegate_to: "{{ vm_swarm_manager }}"
+  delegate_to: "{{ vm_swarm_manager | default(omit) }}"
   when:
     - vminsert_swarm_cluster
     - vm_swarm_manager is defined

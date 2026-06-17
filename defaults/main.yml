@@ -5,6 +5,9 @@ vminsert_docker_image: "victoriametrics/vminsert:v1.77.2-cluster"
 vminsert_docker_labels:
   - vminsert
 vminsert_address: "127.0.0.1"
+vminsert_port: "8480"
+vminsert_ports:
+  - "{{ '' if vminsert_swarm_cluster | bool else vminsert_address + ':' }}{{ vminsert_port }}:8480"
 
 vminsert_command:
   - '--storageNode={{ ansible_host }}:8400'
